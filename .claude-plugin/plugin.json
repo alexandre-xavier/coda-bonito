@@ -1,0 +1,11 @@
+{
+  "name": "coda",
+  "version": "0.1.0",
+  "description": "Java and Groovy code style rules (parameter ordering, blank lines, types, cleanup, safe logging, constants, lambdas, Spock tests).",
+  "author": {
+    "name": "Alexandre Xavier"
+  },
+  "homepage": "https://github.com/alexandre-xavier/coda-bonito",
+  "repository": "https://github.com/alexandre-xavier/coda-bonito",
+  "keywords": ["java", "groovy", "spock", "code-style"]
+}

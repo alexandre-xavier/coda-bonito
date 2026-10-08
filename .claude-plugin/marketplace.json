@@ -1,0 +1,15 @@
+{
+  "name": "coda-bonito",
+  "description": "Personal Claude Code marketplace for Alexandre Xavier's Java and Groovy code style plugin.",
+  "owner": {
+    "name": "Alexandre Xavier"
+  },
+  "plugins": [
+    {
+      "name": "coda",
+      "source": "./",
+      "description": "Java and Groovy code style rules, exposed as the bonito skill (/coda:bonito).",
+      "version": "0.1.0"
+    }
+  ]
+}
