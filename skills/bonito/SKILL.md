@@ -2,12 +2,12 @@
 name: bonito
 description: Java and Groovy code style rules for coding (parameter ordering, blank lines, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
 metadata:
-  version: 0.1.0
-  updated: 2026-10-08
+  version: 0.2.0
+  updated: 2026-10-14
   origin: develop
 ---
 
-# Java and Groovy Style Rules (v0.1.0)
+# Java and Groovy Style Rules (v0.2.0)
 
 Each rule records something a reviewer or a scanner caught. Apply them to new code and to any code you touch.
 
@@ -34,6 +34,8 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | F2 | Calls go multi-line when they have 2+ arguments, or when a 1-argument call would exceed 80 characters | Formatting |
 | F3 | Leave a blank line right after a type declaration, before the first member | Formatting |
 | F4 | Leave blank lines between groups of related statements, around mid-method `if`/`for`/`try`, and before `return` | Formatting |
+| F5 | Keep lines under about 120 characters. Break method chains and argument lists early | Formatting |
+| F6 | Keep nested object construction to 2-3 levels. Extract deeper levels into intermediate variables | Formatting |
 | T1 | Domain records use **primitives** for values that are always present. Request DTOs keep **wrappers** + `@NotNull` | Types |
 | T2 | Use `Optional` only as a return type, never as a field or parameter | Types |
 | T3 | Prefer `var` (Java and Groovy) when the right-hand side or the method name makes the type obvious | Types |
@@ -57,6 +59,8 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | S4 | When you delete code, also delete the tests that only covered it | Tests |
 | S5 | Stub with `doReturn`/`doThrow(...).when(mock).method(...)` | Tests |
 | S6 | Test `Mono`/`Flux` with `StepVerifier` | Tests |
+| S7 | Use typed matchers in `verify` calls (`any(Type.class)`, `anyString()`), not bare `any()` | Tests |
+| S8 | Separate setup, execution, and verification in a test with blank lines | Tests |
 
 ---
 
@@ -177,6 +181,57 @@ if (orders.isEmpty()) {
 var summaries = orderMapper.toSummaryList(orders);
 
 return HttpResponse.ok(summaries);
+```
+
+### F5: line length threshold
+
+**Why:** lines past about 120 characters force horizontal scrolling and hide the end of an expression in a diff. Break early instead of fitting as much as possible on one line. This covers method chains, argument lists, string concatenations, and long boolean conditions. Imports are exempt.
+
+```java
+// Incorrect
+maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
+    .ifPresent(...);
+
+// Correct
+maybeActionsWithUpdatedTokenSettings(
+    policyRule.getActions(),
+    refreshTokenWindowMinutes,
+    accessTokenLifetimeMinutes
+)
+    .ifPresent(...);
+```
+
+- Put one argument per line (F2), and one call per line in a chain.
+- Split a long string literal with `+` at a word boundary, or use a text block when the text is long (see N1 for building messages from constants).
+- Extract a repeated sub-expression to a local variable when it makes a condition fit.
+
+### F6: nested object depth
+
+Keep nested constructions and builder-style chains to **2-3 levels**. When there are more, extract the inner levels into intermediate variables with a role name. Keep the nesting inline when it still reads clearly at 3 levels.
+
+```java
+// Incorrect: four levels
+return withId(
+    new AuthorizationServerPolicyRule()
+        .actions(new AuthorizationServerPolicyRuleActions()
+            .token(new TokenAuthorizationServerPolicyRuleAction()
+                .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+                .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes))),
+    id
+);
+
+// Correct
+var actions = new AuthorizationServerPolicyRuleActions()
+    .token(
+        new TokenAuthorizationServerPolicyRuleAction()
+            .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+            .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes)
+    );
+
+return withId(
+    new AuthorizationServerPolicyRule().actions(actions),
+    id
+);
 ```
 
 ---
@@ -499,6 +554,45 @@ StepVerifier.create(result)
     .verifyComplete();
 ```
 
+### S7: typed matchers in `verify`
+
+A bare `any()` matches anything, so a verification that uses it hides a wrong argument type or a swapped argument. Use the typed matcher: `any(Type.class)`, `anyString()`, `anyList()`, `anyInt()`. Keep `eq(...)` or the literal for arguments the test cares about, and put the call on its own line when it has arguments (F2).
+
+```java
+// Incorrect
+verify(repository, never()).save(any(), any());
+
+// Correct
+verify(repository, never())
+    .save(
+        any(AgentTokenSettings.class),
+        anyString()
+    );
+```
+
+Typed matchers also apply to Mockito `doReturn(...).when(mock).method(...)` stubs when you are touching them anyway. A bare `any()` is acceptable only for a parameter that can be `null`.
+
+### S8: logical blocks in a test
+
+A test has three blocks: setup, execution, verification. Separate them with a blank line (the F4 rule for Spock `given:`/`when:`/`then:`, applied to JUnit). Several setup statements, or several verifications, that belong together stay together.
+
+```java
+@Test
+void getReturnsExistingSettingsWithoutCreatingAnything() {
+    var existing = new AgentTokenSettings(TENANT_ID, 3, 600, 60);
+
+    doReturn(Optional.of(existing))
+        .when(repository)
+        .fetch(TENANT_ID);
+
+    var settings = service.getAgentTokenSettings(TENANT_ID);
+
+    assertSame(existing, settings);
+    verify(repository, never())
+        .save(any(AgentTokenSettings.class), anyString());
+}
+```
+
 ---
 
 ## Decision trees
@@ -542,6 +636,8 @@ Formatting
 - [ ] A blank line follows each type declaration (not in Spock specs, not in empty bodies)
 - [ ] Declarations put one parameter per line, with `)` on its own line
 - [ ] Calls with 2+ arguments, or with 1 argument over 80 characters, are multi-line
+- [ ] No line is over about 120 characters (imports excepted). Long chains and argument lists are broken early
+- [ ] Nested object construction is at most 3 levels deep. Deeper levels are extracted into variables
 - [ ] Related statements are grouped, with blank lines between groups, around mid-method `if`/`for`/`try`, before `return`, and between Spock blocks
 
 Ordering, naming, and types
@@ -572,6 +668,8 @@ Tests
 - [ ] Every Spock block has a descriptive label
 - [ ] Stubs use `doReturn`/`doThrow`, except for parameterless value-object getters
 - [ ] `Mono`/`Flux` are tested with `StepVerifier`
+- [ ] `verify` calls use typed matchers (`any(Type.class)`, `anyString()`), not bare `any()`
+- [ ] Each test separates setup, execution, and verification with blank lines
 
 Build
 - [ ] The project's test suite passes

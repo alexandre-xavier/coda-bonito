@@ -1,6 +1,6 @@
 {
   "name": "coda",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Java and Groovy code style rules (parameter ordering, blank lines, types, cleanup, safe logging, constants, lambdas, Spock tests).",
   "author": {
     "name": "Alexandre Xavier"
