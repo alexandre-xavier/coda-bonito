@@ -34,8 +34,8 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | F2 | Calls go multi-line when they have 2+ arguments, or when a 1-argument call would exceed 80 characters | Formatting |
 | F3 | Leave a blank line right after a type declaration, before the first member | Formatting |
 | F4 | Leave blank lines between groups of related statements, around mid-method `if`/`for`/`try`, and before `return` | Formatting |
-| F5 | Keep lines under about 120 characters. Break method chains and argument lists early | Formatting |
-| F6 | Keep nested object construction to 2-3 levels. Extract deeper levels into intermediate variables | Formatting |
+| F5 | Exception to F2: a call that stands alone stays on one line when it fits in 120 characters (indentation included), even with 3+ arguments. If a chain follows, F2 applies. Over 120: extract to a variable | Formatting |
+| F6 | One dot per line in every chain, constructors included (`new X()` then `.method()` on the next line). Plain getters inside argument lists stay inline. Extract to intermediate variables for readability | Formatting |
 | T1 | Domain records use **primitives** for values that are always present. Request DTOs keep **wrappers** + `@NotNull` | Types |
 | T2 | Use `Optional` only as a return type, never as a field or parameter | Types |
 | T3 | Prefer `var` (Java and Groovy) when the right-hand side or the method name makes the type obvious | Types |
@@ -183,16 +183,23 @@ var summaries = orderMapper.toSummaryList(orders);
 return HttpResponse.ok(summaries);
 ```
 
-### F5: line length threshold
+### F5: line length (exception to F2)
 
-**Why:** lines past about 120 characters force horizontal scrolling and hide the end of an expression in a diff. Break early instead of fitting as much as possible on one line. This covers method chains, argument lists, string concatenations, and long boolean conditions. Imports are exempt.
+**Why:** F2 splits every call with 2+ arguments, which makes short, simple calls needlessly tall. F5 is the exception: when a call **stands alone** (nothing chained after it), keep it on a single line as long as the line is under **120 characters, indentation included**, even with 3 or more arguments. Imports are exempt.
 
 ```java
-// Incorrect
+// Correct: standalone call, fits in 120 characters
+var actions = maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes);
+```
+
+**F2 takes precedence when a chain follows the call** (`.ifPresent()`, `.map()`, and so on). Then use one argument per line and one call per line.
+
+```java
+// Incorrect: chained call kept on one line
 maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
     .ifPresent(...);
 
-// Correct
+// Correct: F2 applies because of the chain
 maybeActionsWithUpdatedTokenSettings(
     policyRule.getActions(),
     refreshTokenWindowMinutes,
@@ -201,13 +208,39 @@ maybeActionsWithUpdatedTokenSettings(
     .ifPresent(...);
 ```
 
-- Put one argument per line (F2), and one call per line in a chain.
+**When the call is over 120 characters**, extract it to a variable and chain on the next line.
+
+```java
+// Correct
+var maybeActions = maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes);
+
+maybeActions.ifPresent(...);
+```
+
+- Count the indentation when measuring the 120 characters.
 - Split a long string literal with `+` at a word boundary, or use a text block when the text is long (see N1 for building messages from constants).
 - Extract a repeated sub-expression to a local variable when it makes a condition fit.
 
-### F6: nested object depth
+### F6: one dot per line, extract to variables
 
-Keep nested constructions and builder-style chains to **2-3 levels**. When there are more, extract the inner levels into intermediate variables with a role name. Keep the nesting inline when it still reads clearly at 3 levels.
+**Why:** a chain written on one line hides where each call starts, and deeply nested construction hides the shape of the object. Two rules apply together.
+
+**One dot per line.** Every chain puts each call on its own line, constructors included: `new X()` is followed by `.method()` on the next line. The one exception is a plain getter inside an argument list (for example `policyRule.getActions()`), which stays inline.
+
+```java
+// Incorrect
+var rule = new AuthorizationServerPolicyRule().actions(actions).name(name);
+
+// Correct
+var rule = new AuthorizationServerPolicyRule()
+    .actions(actions)
+    .name(name);
+
+// Correct: a plain getter inside an argument list stays inline
+var updated = maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes);
+```
+
+**Extract to intermediate variables for readability.** Keep nested constructions to **2-3 levels**. When there are more, extract the inner levels into variables with a role name. This rule stays alongside one-dot-per-line, it does not replace it.
 
 ```java
 // Incorrect: four levels
@@ -221,17 +254,17 @@ return withId(
 );
 
 // Correct
-var actions = new AuthorizationServerPolicyRuleActions()
-    .token(
-        new TokenAuthorizationServerPolicyRuleAction()
-            .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
-            .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes)
-    );
+var tokenAction = new TokenAuthorizationServerPolicyRuleAction()
+    .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+    .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes);
 
-return withId(
-    new AuthorizationServerPolicyRule().actions(actions),
-    id
-);
+var actions = new AuthorizationServerPolicyRuleActions()
+    .token(tokenAction);
+
+var rule = new AuthorizationServerPolicyRule()
+    .actions(actions);
+
+return withId(rule, id);
 ```
 
 ---
@@ -556,7 +589,7 @@ StepVerifier.create(result)
 
 ### S7: typed matchers in `verify`
 
-A bare `any()` matches anything, so a verification that uses it hides a wrong argument type or a swapped argument. Use the typed matcher: `any(Type.class)`, `anyString()`, `anyList()`, `anyInt()`. Keep `eq(...)` or the literal for arguments the test cares about, and put the call on its own line when it has arguments (F2).
+A bare `any()` matches anything, so a verification that uses it hides a wrong argument type or a swapped argument. Use the typed matcher: `any(Type.class)`, `anyString()`, `anyList()`, `anyInt()`. Keep `eq(...)` or the literal for arguments the test cares about, and keep the call on one line when it fits in 120 characters (F5).
 
 ```java
 // Incorrect
@@ -564,10 +597,7 @@ verify(repository, never()).save(any(), any());
 
 // Correct
 verify(repository, never())
-    .save(
-        any(AgentTokenSettings.class),
-        anyString()
-    );
+    .save(any(AgentTokenSettings.class), anyString());
 ```
 
 Typed matchers also apply to Mockito `doReturn(...).when(mock).method(...)` stubs when you are touching them anyway. A bare `any()` is acceptable only for a parameter that can be `null`.
@@ -635,8 +665,9 @@ Is the logic repeated in 2+ methods, or is the lambda longer than ~3 lines? -> e
 Formatting
 - [ ] A blank line follows each type declaration (not in Spock specs, not in empty bodies)
 - [ ] Declarations put one parameter per line, with `)` on its own line
-- [ ] Calls with 2+ arguments, or with 1 argument over 80 characters, are multi-line
-- [ ] No line is over about 120 characters (imports excepted). Long chains and argument lists are broken early
+- [ ] Calls with 2+ arguments, or with 1 argument over 80 characters, are multi-line, except a standalone call under 120 characters (indentation included), which stays on one line (F5)
+- [ ] A call over 120 characters is extracted to a variable, with the chain on the next line
+- [ ] Every chain has one dot per line, constructors included. Plain getters inside argument lists stay inline
 - [ ] Nested object construction is at most 3 levels deep. Deeper levels are extracted into variables
 - [ ] Related statements are grouped, with blank lines between groups, around mid-method `if`/`for`/`try`, before `return`, and between Spock blocks
 
