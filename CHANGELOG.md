@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-15
+
+### Added
+
+- Formatting rule F5: line length as a soft target (~120 characters including indentation). A call followed by a chain may stay on one line if it is under the limit; otherwise it is extracted to a variable with one argument per line
+- Formatting rule F6: one-dot-per-line for chains (2+ dots); lambda bodies are exempt. Nested object construction is limited to 3 levels (prefer 2 in new code), with a marked 3-level example
+- Test rule S7: typed matchers in `verify` calls, arguments one per line (F2)
+- Test rule S8: three logical test blocks (setup, execution, verification); within-block grouping per F4
+- Verification checklist entries for the four new rules
+- Skill description now covers line length, method chains, nested objects, typed matchers, and test structure
+
+### Changed
+
+- F2 behaviour: now applies everywhere, tests included. F5 is the exception for a call followed by a chain
+
 ## [0.1.0] - 2026-10-08
 
 ### Added
@@ -25,5 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decision trees and a verification checklist
 - Claude Code plugin (`coda`) and marketplace (`coda-bonito`) manifests
 
-[Unreleased]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/alexandre-xavier/coda-bonito/releases/tag/v0.1.0

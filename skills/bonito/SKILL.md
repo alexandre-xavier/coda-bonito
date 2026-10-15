@@ -1,13 +1,13 @@
 ---
 name: bonito
-description: Java and Groovy code style rules for coding (parameter ordering, blank lines, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
+description: Java and Groovy code style rules for coding (parameter ordering, blank lines, line length, method chains, nested objects, typed matchers, test structure, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
 metadata:
-  version: 0.1.0
-  updated: 2026-10-08
+  version: 0.2.0
+  updated: 2026-10-15
   origin: develop
 ---
 
-# Java and Groovy Style Rules (v0.1.0)
+# Java and Groovy Style Rules (v0.2.0)
 
 Each rule records something a reviewer or a scanner caught. Apply them to new code and to any code you touch.
 
@@ -31,9 +31,11 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | NM4 | No `is`/`has` prefixes on booleans, for fields, variables, or methods | Naming |
 | NM5 | Countable lists use the plural (`orders`). Uncountables and nested lists use a `List` suffix (`contentList`, `ordersList`) | Naming |
 | F1 | Declarations put each parameter on its own line, with the closing `)` on its own line | Formatting |
-| F2 | Calls go multi-line when they have 2+ arguments, or when a 1-argument call would exceed 80 characters | Formatting |
+| F2 | Calls go multi-line when they have 2+ arguments, or when a 1-argument call would exceed 80 characters. Exception: F5 (call followed by a chain) | Formatting |
 | F3 | Leave a blank line right after a type declaration, before the first member | Formatting |
 | F4 | Leave blank lines between groups of related statements, around mid-method `if`/`for`/`try`, and before `return` | Formatting |
+| F5 | Line length (~120 chars, indentation included); call+chain may stay on one line if under the limit (exception to F2) | Formatting |
+| F6 | One dot per line for chains (2+ dots). Lambda bodies exempt. Nested object construction: at most 3 levels (prefer 2 in new code) | Formatting |
 | T1 | Domain records use **primitives** for values that are always present. Request DTOs keep **wrappers** + `@NotNull` | Types |
 | T2 | Use `Optional` only as a return type, never as a field or parameter | Types |
 | T3 | Prefer `var` (Java and Groovy) when the right-hand side or the method name makes the type obvious | Types |
@@ -57,6 +59,8 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | S4 | When you delete code, also delete the tests that only covered it | Tests |
 | S5 | Stub with `doReturn`/`doThrow(...).when(mock).method(...)` | Tests |
 | S6 | Test `Mono`/`Flux` with `StepVerifier` | Tests |
+| S7 | Use typed matchers in `verify` calls (`any(Type.class)`, `anyString()`), not bare `any()`. Arguments one per line (F2) | Tests |
+| S8 | Three logical blocks in a test (setup, execution, verification) separated by blank lines. F4 grouping applies within a block | Tests |
 
 ---
 
@@ -178,6 +182,151 @@ var summaries = orderMapper.toSummaryList(orders);
 
 return HttpResponse.ok(summaries);
 ```
+
+### F5: line length (soft target, ~120 chars; exception to F2 for call + chain)
+
+**Why:** F2 splits every call with 2+ arguments, which makes a call followed by a chain needlessly tall. Lines aim for 120 characters including indentation. When a method call is followed by a chain, the call may stay on one line if the full indented line does not exceed 120 characters, even with 3 or more arguments. The chain goes on the next line, one call per line (F6).
+
+**Call + chain, line fits in 120 characters (4 spaces of indentation, 120 characters):** keep the call on one line.
+
+```java
+// Correct: call on one line, chain on the next line
+    maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
+        .ifPresent(...);
+// Because:
+// 1. A chained call follows (here, ifPresent)
+// 2. The full indented line is 120 characters, so F5 lets it stay on one line
+```
+
+**Call + chain, line exceeds 120 characters (8 spaces of indentation, 124 characters):** F2 takes precedence. Extract the call to a variable with one argument per line, then call the chain on the variable.
+
+```java
+// Incorrect: 124 characters with its indentation
+        maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
+            .ifPresent(...);
+
+// Correct
+        var maybeActions = maybeActionsWithUpdatedTokenSettings(
+            policyRule.getActions(),
+            refreshTokenWindowMinutes,
+            accessTokenLifetimeMinutes
+        );
+
+        maybeActions.ifPresent(...);
+// Because:
+// 1. A chained call follows, but the line is over 120 characters, so F2 applies
+// 2. The variable name is shorter than the method name, so the chain stays readable
+```
+
+**Standalone call (nothing chained after it):** F5 does not apply. A standalone call follows F2, and when you assign it to a variable the split is the only change. Shortening names so that the call fits in 120 characters does not exempt it from F2.
+
+```java
+// Incorrect: standalone call kept on one line (118 characters with 4 spaces of indentation)
+    var maybeActions = maybeActionsWithUpdatedTokenSettings(actions, refreshTokenWindowMins, accessTokenLifetimeMins);
+
+// Correct: F2 splits the arguments, the result is still assigned to a variable
+    var maybeActions = maybeActionsWithUpdatedTokenSettings(
+        actions,
+        refreshTokenWindowMins,
+        accessTokenLifetimeMins
+    );
+// Because: no chain follows, so the F5 exception does not apply
+```
+
+- Count the indentation when measuring the line.
+- 120 is a soft guideline. Readability trumps the limit: a line a few characters over that is clearer than the split is acceptable, and a line under 120 that is unreadable should still be broken.
+
+### F6: one dot per line for chains (2+ dots), with lambda exemption
+
+**Why:** a chain written on one line hides where each call starts, and deeply nested construction hides the shape of the object.
+
+**One dot per line.** A **chain** is two or more method calls on the same object on one line (`a.b().c()`). Every chain puts each call on its own line, one dot per line, constructors included: `new X()` is followed by `.method()` on the next line. **Exception:** lambda bodies are exempt from this rule. A single-dot call (`receiver.method()`) is not a chain and stays inline. That includes the plain getters in an F2 argument split (`policyRule.getActions()`).
+
+```java
+// Incorrect
+var rule = new AuthorizationServerPolicyRule().actions(actions).name(name);
+
+// Correct
+var rule = new AuthorizationServerPolicyRule()
+    .actions(actions)
+    .name(name);
+
+// Correct: single-dot getters inside an F2 argument split stay inline
+var rule = buildRule(
+    policyRule.getActions(),
+    policyRule.getName()
+);
+
+// Correct: the lambda body is exempt, and the reverse equals is preferred
+var tokenSettings = policyRule
+    .getActions()
+    .stream()
+    .filter(action -> "token_settings".equals(action.getType()))
+    .findFirst();
+```
+
+**Extract to intermediate variables for readability.**
+
+A **level** is any constructor or method call that holds another object construction in its argument list. Count from the outermost call, `withId(...)` included.
+
+- Chained calls on the same object (`.getActions().stream()...`) do **not** add levels.
+- A variable or getter argument ends the nesting.
+- **Limit: at most 3 levels; prefer 2 in new code.** When there are more, extract the inner levels into variables with a role name.
+
+```java
+// Incorrect: four levels
+// 1
+return withId(
+    // 2
+    new AuthorizationServerPolicyRule()
+        .actions(
+            // 3
+            new AuthorizationServerPolicyRuleActions()
+                .token(
+                    // 4
+                    new TokenAuthorizationServerPolicyRuleAction()
+                        .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+                        .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes)
+                )
+        ),
+    id
+);
+
+// Correct (preferred): two levels, full extraction
+var tokenAction = new TokenAuthorizationServerPolicyRuleAction()
+    .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+    .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes);
+
+var actions = new AuthorizationServerPolicyRuleActions()
+    .token(tokenAction);
+
+var rule = new AuthorizationServerPolicyRule()
+    .actions(actions);
+
+return withId(rule, id);
+// 2 levels: withId and Rule
+
+// Correct (allowed, less preferred): three levels, partial extraction
+var tokenAction = new TokenAuthorizationServerPolicyRuleAction()
+    .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+    .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes);
+
+// 1
+var rule = new AuthorizationServerPolicyRule()
+    .actions(
+        // 2
+        new AuthorizationServerPolicyRuleActions()
+            .token(
+                // 3
+                tokenAction
+            )
+    );
+
+return withId(rule, id);
+// 3 levels: withId, Rule, Actions
+```
+
+Chains do not add levels: the `policyRule.getActions().stream()...` chain above is 0 levels, because every call is on the same object.
 
 ---
 
@@ -499,6 +648,56 @@ StepVerifier.create(result)
     .verifyComplete();
 ```
 
+### S7: typed matchers in `verify`
+
+A bare `any()` matches anything, so a verification that uses it hides a wrong argument type or a swapped argument. Use the typed matcher: `any(Type.class)`, `anyString()`, `anyList()`, `anyInt()`. Keep `eq(...)` or the literal for arguments the test cares about. The verified call goes on the line after `verify(...)` (F6, one dot per line), with one argument per line (F2).
+
+```java
+// Incorrect
+verify(repository, never()).save(any(), any());
+
+// Correct
+verify(repository, never())
+    .save(
+        any(AgentTokenSettings.class),
+        anyString()
+    );
+```
+
+Typed matchers also apply to Mockito `doReturn(...).when(mock).method(...)` stubs when you are touching them anyway. A bare `any()` is acceptable only for a parameter that can be `null`.
+
+### S8: logical blocks in a test
+
+A test has three blocks: setup, execution, verification. Separate them with a blank line (the F4 rule for Spock `given:`/`when:`/`then:`, applied to JUnit). Several setup statements, or several verifications, that belong together stay together. Within a test block, F4 logical grouping still applies. F2 applies to every call in the test, so constructors and assertions with 2+ arguments are split one argument per line.
+
+```java
+@Test
+void getReturnsExistingSettingsWithoutCreatingAnything() {
+    var existing = new AgentTokenSettings(
+        TENANT_ID,
+        3,
+        600,
+        60
+    );
+
+    doReturn(Optional.of(existing))
+        .when(repository)
+        .fetch(TENANT_ID);
+
+    var settings = service.getAgentTokenSettings(TENANT_ID);
+
+    assertSame(
+        existing,
+        settings
+    );
+    verify(repository, never())
+        .save(
+            any(AgentTokenSettings.class),
+            anyString()
+        );
+}
+```
+
 ---
 
 ## Decision trees
@@ -541,7 +740,12 @@ Is the logic repeated in 2+ methods, or is the lambda longer than ~3 lines? -> e
 Formatting
 - [ ] A blank line follows each type declaration (not in Spock specs, not in empty bodies)
 - [ ] Declarations put one parameter per line, with `)` on its own line
-- [ ] Calls with 2+ arguments, or with 1 argument over 80 characters, are multi-line
+- [ ] Calls with 2+ arguments, or with 1 argument over 80 characters, are multi-line (F2), except a call followed by a chain that fits in ~120 characters (F5)
+- [ ] Line fits within ~120 characters (indentation included); a call with a subsequent chain may stay on one line
+- [ ] A call with a chain over ~120 characters is extracted to a variable (one argument per line)
+- [ ] A standalone call (no chain) follows F2, even when it fits in 120 characters
+- [ ] Every dot on a new line for chains (2+ dots). Lambdas exempt. Single-dot getters inline in F2 splits
+- [ ] Nested object construction is at most 3 levels deep (prefer 2 in new code); chained calls do not add levels. Deeper levels are extracted into variables
 - [ ] Related statements are grouped, with blank lines between groups, around mid-method `if`/`for`/`try`, before `return`, and between Spock blocks
 
 Ordering, naming, and types
@@ -572,6 +776,8 @@ Tests
 - [ ] Every Spock block has a descriptive label
 - [ ] Stubs use `doReturn`/`doThrow`, except for parameterless value-object getters
 - [ ] `Mono`/`Flux` are tested with `StepVerifier`
+- [ ] `verify` calls use typed matchers (`any(Type.class)`, `anyString()`), not bare `any()`. Arguments one per line in the `verify()` call (F2 applies)
+- [ ] Three logical blocks (setup, execution, verification) separated by blank lines; within a block, F4 grouping applies
 
 Build
 - [ ] The project's test suite passes
