@@ -185,32 +185,23 @@ return HttpResponse.ok(summaries);
 
 ### F5: line length (exception to F2)
 
-**Why:** F2 splits every call with 2+ arguments, which makes a call followed by a chain needlessly tall. F5 is the exception, and it applies **only when a chained call follows on the next line**: keep the call on a single line as long as the line is under **120 characters, indentation included**, even with 3 or more arguments. Imports are exempt.
+**Why:** F2 splits every call with 2+ arguments, which makes a call followed by a chain needlessly tall. F5 is the exception, and it applies **only when a chained call follows on the next line**: keep the call on a single line as long as the line did not exceed the 120-character limit, **indentation included**, even with 3 or more arguments. Imports are exempt.
 
-**Call with a chain that fits in 120 characters:** keep the call itself on one line and put the chain on the next line, one call per line (F6). Do not break the call's arguments over several lines just because a chain follows.
+**Call with a chain that did not exceed the 120-character limit:** keep the call itself on one line and put the chain on the next line, one call per line (F6).
 
 ```java
 // Correct: call on one line, chain on the next line
 maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
     .ifPresent(...);
-// Reasoning:
-// - Has subsequent chained call (.ifPresent)
-// - Call fits within 120 characters
-// - Kept on same line as exception to F2
-
-// Incorrect: call broken into multiple lines because of the chain
-maybeActionsWithUpdatedTokenSettings(
-    policyRule.getActions(),
-    refreshTokenWindowMinutes,
-    accessTokenLifetimeMinutes
-)
-    .ifPresent(...);
+// Because:
+// 1. There is a subsequent chained method call (in this particular example, an ifPresent method call)
+// 2. Kept on the same line since it did not exceed the 120-character limit
 ```
 
 **Call with a chain that exceeds 120 characters:** F2 takes precedence. Extract the call to a variable with one argument per line, then chain on the variable, one call per line.
 
 ```java
-// Correct
+// Correct:
 var maybeActionsWithUpdatedTokenSettings = maybeActionsWithUpdatedTokenSettings(
     policyRule.getActions(),
     agentTokenSettings.refreshTokenWindowMinutes(),
@@ -219,18 +210,19 @@ var maybeActionsWithUpdatedTokenSettings = maybeActionsWithUpdatedTokenSettings(
 
 maybeActionsWithUpdatedTokenSettings
     .ifPresent(...);
-// Reasoning:
-// - Has subsequent chained call (.ifPresent)
-// - Full call exceeded 120 characters
-// - Extracted to variable with F2 formatting (one arg per line)
-// - Variable then chained normally (one-dot-per-line)
+// Because:
+// 1. There is a subsequent chained method call (in this particular example, an ifPresent method call)
+// 2. var assignment because it exceeded the 120-character limit (this favored readability).
 ```
 
-**Standalone call (nothing chained after it):** F5 does not apply. Do not extract the call to a variable just to keep it on one line; format it with F2.
+**Standalone call (nothing chained after it):** F5 does not apply. Do not extract the call to a variable; the variable is only justified when a chain follows and the call exceeded the 120-character limit. The call below (116 characters on its own) did not exceed the 120-character limit, so assigning it to a variable is incorrect.
 
 ```java
-// Incorrect: DON'T DO THIS - no subsequent chain, no need for variable:
+// Incorrect: standalone call, fits in 120 characters
 var actions = maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes);
+// Because:
+// 1. did not exceed the 120-character limit
+// 2. No subsequent chained call in this example
 ```
 
 - Count the indentation when measuring the 120 characters.
