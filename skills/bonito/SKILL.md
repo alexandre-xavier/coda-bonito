@@ -1,6 +1,6 @@
 ---
 name: bonito
-description: Java and Groovy code style rules for coding (parameter ordering, blank lines, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
+description: Java and Groovy code style rules for coding (parameter ordering, blank lines, line length, method chains, nested objects, typed matchers, test structure, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
 metadata:
   version: 0.2.0
   updated: 2026-10-15

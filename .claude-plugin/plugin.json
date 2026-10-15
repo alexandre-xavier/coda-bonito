@@ -1,7 +1,7 @@
 {
   "name": "coda",
   "version": "0.2.0",
-  "description": "Java and Groovy code style rules (parameter ordering, blank lines, types, cleanup, safe logging, constants, lambdas, Spock tests).",
+  "description": "Formatting rules: line length (~120 chars), method chains (one-dot-per-line), nested objects (≤3 levels), typed Mockito matchers in tests, logical test blocks",
   "author": {
     "name": "Alexandre Xavier"
   },
