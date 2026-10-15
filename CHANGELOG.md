@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Formatting rule F5, an exception to F2: a call under 120 characters (indentation included) stays on one line, with any chain on the next line. When a call with a chain exceeds 120 characters, it is extracted to a variable with one argument per line (F2)
-- Formatting rule F6: one dot per line in every chain (constructors included, plain getters in argument lists excepted), alongside extracting deep nesting to intermediate variables
-- Test rules S7 (typed matchers in `verify` calls) and S8 (blank lines between setup, execution, and verification)
+- Formatting rule F5, an exception to F2 that applies only to a call followed by a chained call: the call stays on one line when it fits in 120 characters (indentation included), with the chain on the next line. When it exceeds 120 characters, it is extracted to a variable with one argument per line (F2). A standalone call follows F2
+- Formatting rule F6: one dot per line in every chain (constructors included; plain getters in argument lists stay inline only when a chain follows and the line fits in 120 characters), alongside extracting deep nesting to intermediate variables, with a 3-level chain example
+- Test rules S7 (typed matchers in `verify` calls, one argument per line) and S8 (blank lines between setup, execution, and verification)
 - Verification checklist entries for the four new rules
 
 ## [0.1.0] - 2026-10-08
