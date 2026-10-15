@@ -35,7 +35,7 @@ Each rule records something a reviewer or a scanner caught. Apply them to new co
 | F3 | Leave a blank line right after a type declaration, before the first member | Formatting |
 | F4 | Leave blank lines between groups of related statements, around mid-method `if`/`for`/`try`, and before `return` | Formatting |
 | F5 | Exception to F2, **only for a call followed by a chained call**: the call stays on one line when it fits in 120 characters (indentation included), even with 3+ arguments, and the chain goes on the next line. Over 120: extract the call to a variable (F2 arguments), then chain on the variable. A standalone call (no chain) follows F2 | Formatting |
-| F6 | One dot per line in every chain, constructors included (`new X()` then `.method()` on the next line). Plain getters inside argument lists stay inline only when a chained call follows and the line fits in 120 characters. Extract to intermediate variables for readability | Formatting |
+| F6 | One dot per line in every chain, constructors included (`new X()` then `.method()` on the next line). Plain getters inside argument lists stay inline only when a chained call follows and the line fits in 120 characters. Extract to intermediate variables for readability: nested object construction at most 3 levels (prefer 2 in new code); chained calls do not add levels | Formatting |
 | T1 | Domain records use **primitives** for values that are always present. Request DTOs keep **wrappers** + `@NotNull` | Types |
 | T2 | Use `Optional` only as a return type, never as a field or parameter | Types |
 | T3 | Prefer `var` (Java and Groovy) when the right-hand side or the method name makes the type obvious | Types |
@@ -247,29 +247,36 @@ var rule = new AuthorizationServerPolicyRule()
 // Correct: a plain getter inside an argument list stays inline (chain follows, line fits in 120)
 maybeActionsWithUpdatedTokenSettings(policyRule.getActions(), refreshTokenWindowMinutes, accessTokenLifetimeMinutes)
     .ifPresent(...);
-
-// Correct - 3 levels, all chained, one dot per line:
-var result = policyRule
-    .getActions()
-    .stream()
-    .filter(action -> action.getType().equals("token_settings"))
-    .findFirst();
 ```
 
-**Extract to intermediate variables for readability.** Keep nested constructions to **2-3 levels**. When there are more, extract the inner levels into variables with a role name. This rule stays alongside one-dot-per-line, it does not replace it.
+**Extract to intermediate variables for readability.** This rule stays alongside one-dot-per-line, it does not replace it.
+
+A **level** is any constructor or method call that holds another object construction in its argument list. Count from the outermost call, `withId(...)` included.
+
+- Chained calls on the same object (`.getActions().stream()...`) do **not** add levels.
+- A variable or getter argument ends the nesting.
+- **Limit: at most 3 levels; prefer 2 in new code.** When there are more, extract the inner levels into variables with a role name.
 
 ```java
 // Incorrect: four levels
+// 1
 return withId(
+    // 2
     new AuthorizationServerPolicyRule()
-        .actions(new AuthorizationServerPolicyRuleActions()
-            .token(new TokenAuthorizationServerPolicyRuleAction()
-                .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
-                .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes))),
+        .actions(
+            // 3
+            new AuthorizationServerPolicyRuleActions()
+                .token(
+                    // 4
+                    new TokenAuthorizationServerPolicyRuleAction()
+                        .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+                        .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes)
+                )
+        ),
     id
 );
 
-// Correct
+// Correct (preferred): two levels, full extraction
 var tokenAction = new TokenAuthorizationServerPolicyRuleAction()
     .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
     .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes);
@@ -281,6 +288,34 @@ var rule = new AuthorizationServerPolicyRule()
     .actions(actions);
 
 return withId(rule, id);
+// 2 levels: withId and Rule
+
+// Correct (allowed, less preferred): three levels, partial extraction
+var tokenAction = new TokenAuthorizationServerPolicyRuleAction()
+    .refreshTokenWindowMinutes(refreshTokenWindowMinutes)
+    .accessTokenLifetimeMinutes(accessTokenLifetimeMinutes);
+
+// 1
+var rule = new AuthorizationServerPolicyRule()
+    .actions(
+        // 2
+        new AuthorizationServerPolicyRuleActions()
+            .token(
+                // 3
+                tokenAction
+            )
+    );
+
+return withId(rule, id);
+// 3 levels: withId, Rule, Actions
+
+// Chains do NOT add nesting levels:
+var result = policyRule
+    .getActions()
+    .stream()
+    .filter(action -> action.getType().equals("token_settings"))
+    .findFirst();
+// Still 0 levels: all chained calls on same object
 ```
 
 ---
@@ -692,7 +727,7 @@ Formatting
 - [ ] A call with a chain over 120 characters is extracted to a variable (one argument per line), and the chain continues on the variable
 - [ ] A standalone call (no chain) is not extracted to a variable just to fit on one line. It follows F2
 - [ ] Every chain has one dot per line, constructors included. Plain getters inside argument lists stay inline only when a chained call follows and the line fits in 120 characters
-- [ ] Nested object construction is at most 3 levels deep. Deeper levels are extracted into variables
+- [ ] Nested object construction is at most 3 levels deep (prefer 2 in new code); chained calls do not add levels. Deeper levels are extracted into variables
 - [ ] Related statements are grouped, with blank lines between groups, around mid-method `if`/`for`/`try`, before `return`, and between Spock blocks
 
 Ordering, naming, and types
