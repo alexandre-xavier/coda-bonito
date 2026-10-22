@@ -1,13 +1,13 @@
 ---
-name: coda-bonito
+name: bonito
 description: Java and Groovy code style rules for coding (parameter ordering, blank lines, line length, method chains, nested objects, typed matchers, test structure, primitives vs wrappers, var, dead-code cleanup, safe logging, constants, lambdas). Use when writing, refactoring, or reviewing Java or Groovy code, including Spock tests.
 metadata:
-  version: 0.3.0
+  version: 0.3.1
   updated: 2026-10-22
   origin: develop
 ---
 
-# Java and Groovy Style Rules (v0.3.0)
+# Java and Groovy Style Rules (v0.3.1)
 
 Each rule records something a reviewer or a scanner caught. Apply them to new code and to any code you touch.
 
