@@ -8,8 +8,8 @@
     {
       "name": "coda",
       "source": "./",
-      "description": "Java and Groovy code style rules, exposed as the coda-bonito skill (/coda:coda-bonito).",
-      "version": "0.3.0"
+      "description": "Java and Groovy code style rules, exposed as the bonito skill (/coda:bonito).",
+      "version": "0.3.1"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "name": "coda",
-  "version": "0.3.0",
-  "description": "Java and Groovy code style rules for Claude Code, exposed as the coda-bonito skill (/coda:coda-bonito).",
+  "version": "0.3.1",
+  "description": "Java and Groovy code style rules for Claude Code, exposed as the bonito skill (/coda:bonito).",
   "author": {
     "name": "Alexandre Xavier"
   },
