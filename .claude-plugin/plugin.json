@@ -1,7 +1,7 @@
 {
   "name": "coda",
-  "version": "0.2.0",
-  "description": "Formatting rules: line length (~120 chars), method chains (one-dot-per-line), nested objects (≤3 levels), typed Mockito matchers in tests, logical test blocks",
+  "version": "0.3.0",
+  "description": "Java and Groovy code style rules for Claude Code, exposed as the coda-bonito skill (/coda:coda-bonito).",
   "author": {
     "name": "Alexandre Xavier"
   },
