@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-22
+
+### Changed
+
+- **BREAKING:** renamed the skill `bonito` to `coda-bonito`, as first done in 0.3.0 and reverted in 0.3.1. The manual command changes from `/coda:bonito` to `/coda:coda-bonito`; there is no alias. The skill directory is `skills/coda-bonito/`. The plugin (`coda`) and marketplace (`coda-bonito`) names are unchanged
+- Plugin and marketplace descriptions refer to the `coda-bonito` skill and `/coda:coda-bonito`
+- Users on 0.2.0 or 0.3.1 must update and type `/coda:coda-bonito`; after updating, run `/reload-plugins` or start a new session
+
 ## [0.3.1] - 2026-10-22
 
 ### Fixed
@@ -54,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decision trees and a verification checklist
 - Claude Code plugin (`coda`) and marketplace (`coda-bonito`) manifests
 
-[Unreleased]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/alexandre-xavier/coda-bonito/compare/v0.1.0...v0.2.0
